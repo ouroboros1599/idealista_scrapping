@@ -98,7 +98,7 @@ while True:
         break
 
     # Pausa aleatoria entre solicitudes
-    time.sleep(random.uniform(3, 7))  # Espera entre 3 y 7 segundos
+    time.sleep(random.uniform(3, 10))  # Espera entre 3 y 7 segundos
 
     page += 1
 
