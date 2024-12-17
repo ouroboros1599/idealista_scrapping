@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import json
 import time
 import random
+from datetime import datetime
 
 # --- Configuración inicial ---
 base_url = "https://www.idealista.com/geo/venta-viviendas/andalucia/"
@@ -12,19 +13,13 @@ user_agents = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
 ]
 
-# Ya no se usa proxy, elimina la lista de proxies
-# proxies = [
-#     "http://usuario:password@proxy_host:puerto",
-#     "http://proxy2_host:puerto"
-# ]
+properties = []
 
-all_properties = []
-
-# Crear una sesión para manejar cookies y encabezados
+# Sesión global para manejar cookies
 session = requests.Session()
 
+# Función para obtener encabezados aleatorios
 def get_random_headers():
-    """Generar encabezados aleatorios simulando navegadores."""
     return {
         "User-Agent": random.choice(user_agents),
         "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
@@ -34,52 +29,94 @@ def get_random_headers():
         "Cache-Control": "max-age=0"
     }
 
-# Elimina la función get_random_proxy ya que no usaremos proxies
-# def get_random_proxy():
-#     """Seleccionar un proxy aleatorio de la lista."""
-#     return {"http": random.choice(proxies), "https": random.choice(proxies)} if proxies else None
-
-def scrape_page(url, page_number):
-    """Función para realizar scraping de una página específica."""
+# Función para aceptar cookies y establecer la sesión
+def accept_cookies():
     try:
         headers = get_random_headers()
-        
-        # Ya no pasamos proxies aquí
+        url = "https://www.idealista.com/"
+        print("🔄 Realizando una petición inicial para aceptar cookies...")
+        session.get(url, headers=headers, timeout=10)
+        print("✅ Cookies aceptadas correctamente.")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Error al aceptar cookies: {e}")
+
+# Función para extraer los detalles del anuncio
+def scrape_details(url):
+    try:
+        headers = get_random_headers()
         response = session.get(url, headers=headers, timeout=10)
-        response.raise_for_status()  # Detectar errores HTTP
-
-        # Validar si el contenido esperado está presente
-        if "No hemos encontrado resultados" in response.text:
-            print(f"⚠️ Fin de resultados en la página {page_number}.")
-            return False
-
         soup = BeautifulSoup(response.text, 'html.parser')
-        properties = soup.find_all('article', class_='item')
 
-        if not properties:
-            print("⚠️ No se encontraron propiedades. Posible cambio en la estructura del sitio.")
-            return False
+        # Extracción de datos
+        data = {}
 
-        for idx, property in enumerate(properties, start=1):
-            title_tag = property.find('a', class_='item-link')
-            title = title_tag.get_text(strip=True) if title_tag else "Título no encontrado"
+        # Referencia del anuncio
+        ref_tag = soup.find('p', class_='txt-ref')
+        data['Ref anuncio'] = ref_tag.get_text(strip=True) if ref_tag else None
 
-            price_tag = property.find('span', class_='item-price')
-            price = price_tag.get_text(strip=True) if price_tag else "Precio no disponible"
+        # Título del anuncio
+        title_tag = soup.find('span', class_='main-info__title-main')
+        data['Título Anuncio'] = title_tag.get_text(strip=True) if title_tag else None
 
-            location_tag = property.find('span', class_='item-location')
-            location = location_tag.get_text(strip=True) if location_tag else "Ubicación no disponible"
+        # Ubicación
+        location_tag = soup.find('span', class_='main-info__title-minor')
+        data['Calle y Número'] = location_tag.get_text(strip=True) if location_tag else None
 
-            link = f"https://www.idealista.com{title_tag['href']}" if title_tag and title_tag.get('href') else "Sin enlace"
+        # Precio de venta
+        price_tag = soup.find('span', class_='info-data-price')
+        data['Precio Venta'] = price_tag.get_text(strip=True).replace('€', '').strip() if price_tag else None
 
-            all_properties.append({
-                "title": title,
-                "price": price,
-                "location": location,
-                "link": link
-            })
+        # Superficie construida, habitaciones, planta
+        features = soup.find('div', class_='info-features')
+        if features:
+            spans = features.find_all('span')
+            data['Superficie Construida'] = spans[0].get_text(strip=True) if len(spans) > 0 else None
+            data['Dormitorios'] = spans[1].get_text(strip=True) if len(spans) > 1 else None
+            data['Planta'] = spans[2].get_text(strip=True) if len(spans) > 2 else None
 
-            print(f"{idx}. {title} - {price} - {location}\n   Enlace: {link}")
+        # Características básicas
+        details_section = soup.find('div', class_='details-property')
+        if details_section:
+            details_features = details_section.find_all('li')
+            data['Más Características'] = [feature.get_text(strip=True) for feature in details_features]
+
+        # Certificado energético
+        energy_cert = soup.find('h2', string="Certificado energético")
+        if energy_cert:
+            cert_list = energy_cert.find_next('ul')
+            cert_items = cert_list.find_all('li') if cert_list else []
+            data['Calificación Energética'] = (
+                cert_items[0].get_text(strip=True) if cert_items else "En trámite"
+            )
+
+        # URL del portal
+        data['URL Portal'] = url
+
+        # Fecha de extracción
+        data['Fecha Extracción'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        return data
+
+    except Exception as e:
+        print(f"❌ Error al extraer detalles: {e}")
+        return None
+
+
+# Función para scrapeo general de las propiedades
+def scrape_properties(url, page_number):
+    try:
+        headers = get_random_headers()
+        response = session.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Enlaces a las propiedades en la página
+        property_links = soup.find_all('a', class_='item-link')
+        for link in property_links:
+            property_url = f"https://www.idealista.com{link['href']}"
+            print(f"Extrayendo datos de {property_url}")
+            details = scrape_details(property_url)
+            if details:
+                properties.append(details)
 
         return True
 
@@ -87,23 +124,22 @@ def scrape_page(url, page_number):
         print(f"❌ Error al realizar la solicitud en la página {page_number}: {e}")
         return False
 
+
 # --- Bucle principal para paginación ---
+accept_cookies()  # Aceptamos cookies antes de iniciar el scraping
 page = 1
-while True:
+while page <= 3:  # Cambia el límite según lo necesites
     print(f"\n--- Página {page} ---")
     paginated_url = f"{base_url}?pagina={page}"
-    success = scrape_page(paginated_url, page)
-    
+    success = scrape_properties(paginated_url, page)
     if not success:
         break
 
-    # Pausa aleatoria entre solicitudes
-    time.sleep(random.uniform(3, 10))  # Espera entre 3 y 7 segundos
-
+    time.sleep(random.uniform(3, 10))  # Espera entre solicitudes
     page += 1
 
 # --- Guardar resultados en JSON ---
 output_file = "propiedades.json"
 with open(output_file, "w", encoding="utf-8") as file:
-    json.dump(all_properties, file, ensure_ascii=False, indent=4)
+    json.dump(properties, file, ensure_ascii=False, indent=4)
 print(f"\n✅ Datos exportados correctamente a {output_file}")
