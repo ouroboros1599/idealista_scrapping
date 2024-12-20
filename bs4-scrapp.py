@@ -27,7 +27,7 @@ def get_random_headers():
     }
 
 def accept_cookies():
-    """ Simula la aceptación de cookies inicial """
+    """Simula la aceptación de cookies inicial."""
     headers = get_random_headers()
     session.get("https://www.idealista.com/", headers=headers)
 
@@ -80,23 +80,27 @@ def extract_utag_data(soup):
         condition = ad_data.get('condition', {})
 
         return {
-            "locationId": ad_data.get('address', {}).get('locationId'),
-            "roomNumber": characteristics.get('roomNumber'),
-            "bathNumber": characteristics.get('bathNumber'),
-            "constructedArea": characteristics.get('constructedArea'),
-            "energyCertificationType": ad_data.get('energyCertification', {}).get('type'),
-            "swimmingPool": bool(int(characteristics.get('hasSwimmingPool', 0))),
-            "floor": characteristics.get('floor'),
-            "status": (
-                "excellent" if condition.get('isNewDevelopment') == "1" else
-                "good" if condition.get('isGoodCondition') == "1" else
-                "bad" if condition.get('isNeedsRenovating') == "1" else None
-            ),
-            "isSuitableForRecommended": bool(int(ad_data.get('isSuitableForRecommended', 0)))
+            "ubication": {
+                "locationId": ad_data.get('address', {}).get('locationId'),
+            },
+            "moreCharacteristics": {
+                "roomNumber": characteristics.get('roomNumber'),
+                "bathNumber": characteristics.get('bathNumber'),
+                "constructedArea": characteristics.get('constructedArea'),
+                "energyCertificationType": ad_data.get('energyCertification', {}).get('type'),
+                "swimmingPool": bool(int(characteristics.get('hasSwimmingPool', 0))),
+                "floor": characteristics.get('floor'),
+                "status": (
+                    "excellent" if condition.get('isNewDevelopment') == "1" else
+                    "good" if condition.get('isGoodCondition') == "1" else
+                    "bad" if condition.get('isNeedsRenovating') == "1" else None
+                ),
+                "isSuitableForRecommended": bool(int(ad_data.get('isSuitableForRecommended', 0)))
+            }
         }
     except Exception as e:
         print(f"❌ Error al extraer utag_data: {e}")
-        return {}
+        return {"ubication": {}, "moreCharacteristics": {}}
 
 def extract_multimedia(soup):
     """Extrae URLs de imágenes y etiquetas multimedia."""
@@ -115,7 +119,7 @@ def extract_multimedia(soup):
     return multimedia
 
 def extract_data_from_html(soup):
-    """ Extrae los datos necesarios del HTML y los organiza según idealista.json """
+    """Extrae los datos necesarios del HTML y los organiza según idealista.json."""
     data = {
         "adid": None,
         "price": None,
@@ -125,7 +129,7 @@ def extract_data_from_html(soup):
         "state": "active",
         "multimedia": {"images": [], "videos": []},
         "ubication": {"title": None, "latitude": None, "longitude": None, "administrativeAreas": {}},
-        "moreCharacteristics": [],
+        "moreCharacteristics": {}
     }
 
     # ID del anuncio
@@ -161,14 +165,9 @@ def extract_data_from_html(soup):
     data["multimedia"] = extract_multimedia(soup)
 
     # Datos avanzados de utag_data
-    data.update(extract_utag_data(soup))
-
-    # Extract "moreCharacteristics"
-    more_characteristics = soup.find_all('li', class_='feature-list-item')
-    for characteristic in more_characteristics:
-        characteristic_text = characteristic.get_text(strip=True)
-        if characteristic_text:
-            data["moreCharacteristics"].append(characteristic_text)
+    utag_data = extract_utag_data(soup)
+    data["ubication"].update(utag_data.get("ubication", {}))
+    data["moreCharacteristics"].update(utag_data.get("moreCharacteristics", {}))
 
     return data
 
