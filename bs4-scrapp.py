@@ -65,7 +65,7 @@ def extract_administrative_areas(soup):
 def extract_utag_data(soup):
     """Extrae datos avanzados desde el objeto utag_data en el JavaScript embebido."""
     try:
-        script_tag = soup.find('script', text=re.compile(r'var utag_data ='))
+        script_tag = soup.find('script', string=re.compile(r'var utag_data ='))
         if not script_tag:
             return {}
 
