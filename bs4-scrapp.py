@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 import re
 import urllib.parse as urlparse
+from deep_translator import GoogleTranslator
 
 # --- Configuración inicial ---
 base_url = "https://www.idealista.com/geo/venta-viviendas/andalucia/"
@@ -14,6 +15,7 @@ user_agents = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
 ]
 
+languages = ["en", "de", "pt"]  # Idiomas a traducir
 properties = []
 
 # Sesión global para manejar cookies
@@ -31,92 +33,31 @@ def accept_cookies():
     headers = get_random_headers()
     session.get("https://www.idealista.com/", headers=headers)
 
-def extract_lat_lon(map_url):
-    """Extrae latitud y longitud desde la URL del mapa."""
+def translate_text(text, lang):
+    """Traduce un texto a un idioma específico utilizando Google Translate."""
     try:
-        query = urlparse.urlparse(map_url).query
-        params = urlparse.parse_qs(query)
-        center = params.get('center', [None])[0]
-        if center:
-            lat, lon = map(float, center.split(','))
-            return lat, lon
-        return None, None
+        return GoogleTranslator(source="es", target=lang).translate(text)
     except Exception as e:
-        print(f"❌ Error al extraer lat/lon: {e}")
-        return None, None
+        print(f"❌ Error al traducir: {e}")
+        return text
 
-def extract_administrative_areas(soup):
-    """Extrae áreas administrativas desde el bloque de ubicación."""
-    try:
-        header_map = soup.find('div', id='headerMap')
-        area_list = header_map.find_all('li', class_='header-map-list') if header_map else []
-        areas = [area.get_text(strip=True) for area in area_list]
-
-        return {
-            "administrativeAreaLevel4": areas[0] if len(areas) > 0 else None,
-            "administrativeAreaLevel3": areas[1] if len(areas) > 1 else None,
-            "administrativeAreaLevel2": areas[2] if len(areas) > 2 else None,
-            "administrativeAreaLevel1": areas[3] if len(areas) > 3 else None,
-        }
-    except Exception as e:
-        print(f"❌ Error al extraer áreas administrativas: {e}")
-        return {}
-
-def extract_utag_data(soup):
-    """Extrae datos avanzados desde el objeto utag_data en el JavaScript embebido."""
-    try:
-        script_tag = soup.find('script', string=re.compile(r'var utag_data ='))
-        if not script_tag:
-            return {}
-
-        script_content = script_tag.string
-        json_data_match = re.search(r'var utag_data = ({.*});', script_content)
-        if not json_data_match:
-            return {}
-
-        utag_data = json.loads(json_data_match.group(1))
-        ad_data = utag_data.get('ad', {})
-        characteristics = ad_data.get('characteristics', {})
-        condition = ad_data.get('condition', {})
-
-        return {
-            "ubication": {
-                "locationId": ad_data.get('address', {}).get('locationId'),
-            },
-            "moreCharacteristics": {
-                "roomNumber": characteristics.get('roomNumber'),
-                "bathNumber": characteristics.get('bathNumber'),
-                "constructedArea": characteristics.get('constructedArea'),
-                "energyCertificationType": ad_data.get('energyCertification', {}).get('type'),
-                "swimmingPool": bool(int(characteristics.get('hasSwimmingPool', 0))),
-                "floor": characteristics.get('floor'),
-                "status": (
-                    "excellent" if condition.get('isNewDevelopment') == "1" else
-                    "good" if condition.get('isGoodCondition') == "1" else
-                    "bad" if condition.get('isNeedsRenovating') == "1" else None
-                ),
-                "isSuitableForRecommended": bool(int(ad_data.get('isSuitableForRecommended', 0)))
-            }
-        }
-    except Exception as e:
-        print(f"❌ Error al extraer utag_data: {e}")
-        return {"ubication": {}, "moreCharacteristics": {}}
-
-def extract_multimedia(soup):
-    """Extrae URLs de imágenes y etiquetas multimedia."""
-    multimedia = {
-        "images": [],
-        "videos": []
-    }
-    image_tags = soup.find_all('img', {'src': True})
-    for img in image_tags:
-        multimedia["images"].append({
-            "url": img['src'],
-            "tag": img.get('alt', 'image'),
-            "localizedName": img.get('alt', 'image'),
-            "deeplinkUrl": img.get('data-url', '')
-        })
-    return multimedia
+def extract_comments(soup):
+    """Extrae comentarios y genera traducciones."""
+    comments_data = []
+    comment_tag = soup.find('div', class_='comment')
+    if comment_tag:
+        comment = comment_tag.find('p')
+        if comment:
+            original_text = comment.get_text(strip=True)
+            for lang in languages:
+                translated_text = translate_text(original_text, lang)
+                comments_data.append({
+                    "propertyComment": translated_text,
+                    "autoTranslated": lang != "es",
+                    "language": lang,
+                    "defaultLanguage": lang == "es"
+                })
+    return comments_data
 
 def extract_data_from_html(soup):
     """Extrae los datos necesarios del HTML y los organiza según idealista.json."""
@@ -129,7 +70,8 @@ def extract_data_from_html(soup):
         "state": "active",
         "multimedia": {"images": [], "videos": []},
         "ubication": {"title": None, "latitude": None, "longitude": None, "administrativeAreas": {}},
-        "moreCharacteristics": {}
+        "moreCharacteristics": {},
+        "comments": []
     }
 
     # ID del anuncio
@@ -158,16 +100,8 @@ def extract_data_from_html(soup):
     data["ubication"]["latitude"] = lat
     data["ubication"]["longitude"] = lon
 
-    # Áreas administrativas
-    data["ubication"]["administrativeAreas"] = extract_administrative_areas(soup)
-
-    # Multimedia
-    data["multimedia"] = extract_multimedia(soup)
-
-    # Datos avanzados de utag_data
-    utag_data = extract_utag_data(soup)
-    data["ubication"].update(utag_data.get("ubication", {}))
-    data["moreCharacteristics"].update(utag_data.get("moreCharacteristics", {}))
+    # Comentarios
+    data["comments"] = extract_comments(soup)
 
     return data
 
