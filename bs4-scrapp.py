@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 import re
 import urllib.parse as urlparse
+from deep_translator import GoogleTranslator
 
 # --- Configuración inicial ---
 base_url = "https://www.idealista.com/geo/venta-viviendas/andalucia/"
@@ -118,6 +119,33 @@ def extract_multimedia(soup):
         })
     return multimedia
 
+def translate_comment(comment_text, target_languages=["en", "fr", "de"]): #añadir idiomas a elección
+    """Traduce el comentario a los idiomas especificados."""
+    translations = []
+    
+    # Traducir al idioma original (español)
+    translations.append({
+        "propertyComment": comment_text,
+        "autoTranslated": False,
+        "language": "es",
+        "defaultLanguage": True
+    })
+
+    # Traducir a los otros idiomas
+    for lang in target_languages:
+        try:
+            translated_text = GoogleTranslator(source='auto', target=lang).translate(comment_text)
+            translations.append({
+                "propertyComment": translated_text,
+                "autoTranslated": True,
+                "language": lang,
+                "defaultLanguage": False
+            })
+        except Exception as e:
+            print(f"❌ Error al traducir a {lang}: {e}")
+    
+    return translations
+
 def extract_data_from_html(soup):
     """Extrae los datos necesarios del HTML y los organiza según idealista.json."""
     data = {
@@ -130,7 +158,7 @@ def extract_data_from_html(soup):
         "multimedia": {"images": [], "videos": []},
         "ubication": {"title": None, "latitude": None, "longitude": None, "administrativeAreas": {}},
         "moreCharacteristics": {},
-        "comments": {"propertyComment": None, "autoTranslated": False, "language": None, "defaultLanguage": False},
+        "comments": [],
     }
 
     # ID del anuncio
@@ -175,7 +203,8 @@ def extract_data_from_html(soup):
     if comment_tag: 
         comment = comment_tag.find('p')
         if comment:
-            data["comment"] = { "propertyComment": comment.get_text(strip=True), "autoTranslated": False, "language": None, "defaultLanguage": False }
+            comment_text = comment.get_text(strip=True)
+            data["comments"] = translate_comment(comment_text)
 
     return data
 
