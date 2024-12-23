@@ -275,10 +275,10 @@ def extract_data_from_html(soup):
                         "administrativeAreas": {}}, #falta el hasHidenAddress, administrativeAreaLevel1Id, locationName
         "country": "ES",
         "contactInfo": {},
-        "moreCharacteristics": {}, #communityCosts, roomNumber, isStudio, bathNumber, exterior, housingFurnitures, isPenthouse, energyCertificationType, swimmingPool, flatLocation, modaificationDate, constructedArea, lift, garden, boxroom, isDuplex, floor, status
-        #translatedText (floorNumberDescription, layoutDescription, characteristicsDescriptions {key, title, phrases}) //corroborar con cliente si es necesario o no este elemento, ya que no se traduce nada de lo que existe aqui a otro lenguaje
+        "moreCharacteristics": {}, #communityCosts, roomNumber, isStudio, bathNumber, exterior, housingFurnitures, isPenthouse, energyCertificationType, swimmingPool, flatLocation, modaificationDate, constructedArea, lift, garden, boxroom, isDuplex, floor, status //corroborar con cliente si es necesario o no este elemento, ya que no se traduce nada de lo que existe aqui a otro lenguaje
+        #translatedText (floorNumberDescription, layoutDescription, characteristicsDescriptions {key, title, phrases}) //corroborar con cliente si es necesario o no este elemento, ya que no se traduce nada de lo que existe aqui a
         #suggestedTexts (title) //no exsite dentro del html
-        #detailedType (typology, subTypology) //no existe dentro del html 
+        #detailedType (typology, subTypology) //no existe dentro del html
         "comments": [], 
         "detailWebLink": None,
         #enegeryCertification (prefix, suffix, hasIcon)
@@ -342,6 +342,8 @@ def extract_data_from_html(soup):
             comment_text = comment.get_text(strip=True)
             data["comments"] = translate_comment(comment_text)
 
+    # Enlace a la web
+    data["detailWebLink"] = soup.find('link', rel='canonical')['href']
     return data
 
 def scrape_page(page_url):
