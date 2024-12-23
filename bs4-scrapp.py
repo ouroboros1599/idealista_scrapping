@@ -12,7 +12,12 @@ from deep_translator import GoogleTranslator
 base_url = "https://www.idealista.com/geo/venta-viviendas/andalucia/"
 user_agents = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:90.0) Gecko/20100101 Firefox/90.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/91.0.864.48",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Linux; Android 11; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.62 Mobile Safari/537.36",
+    "Mozilla/5.0 (iPad; CPU OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
 ]
 
 properties = []
@@ -85,11 +90,22 @@ def extract_utag_data(soup):
                 "locationId": ad_data.get('address', {}).get('locationId'),
             },
             "moreCharacteristics": {
+                "communityCosts": characteristics.get('communityCosts'),
                 "roomNumber": characteristics.get('roomNumber'),
+                "isStudio": bool(int(characteristics.get('isStudio', 0))),
                 "bathNumber": characteristics.get('bathNumber'),
-                "constructedArea": characteristics.get('constructedArea'),
+                "exterior": bool(int(characteristics.get('isExterior', 0))),
+                "housingFurnitures": bool(int(characteristics.get('hasFurniture', 0))),
+                "isPenthouse": bool(int(characteristics.get('isPenthouse', 0))),
                 "energyCertificationType": ad_data.get('energyCertification', {}).get('type'),
                 "swimmingPool": bool(int(characteristics.get('hasSwimmingPool', 0))),
+                "flatLocation": characteristics.get('flatLocation'),
+                "modificationDate": ad_data.get('modificationDate'),
+                "constructedArea": characteristics.get('constructedArea'),
+                "lift": bool(int(characteristics.get('hasLift', 0))),
+                "garden": bool(int(characteristics.get('hasGarden', 0))),
+                "boxroom": bool(int(characteristics.get('hasBoxroom', 0))),
+                "isDuplex": bool(int(characteristics.get('isDuplex', 0))),
                 "floor": characteristics.get('floor'),
                 "status": (
                     "excellent" if condition.get('isNewDevelopment') == "1" else
@@ -119,7 +135,101 @@ def extract_multimedia(soup):
         })
     return multimedia
 
-def translate_comment(comment_text, target_languages=["en", "fr", "de"]): #añadir idiomas a elección
+def extract_contact_info(soup):
+    """Extrae la información de contacto del HTML."""
+    contact_info = {
+        "phone1": {
+            "phoneNumber": None,
+            "formattedPhone": None,
+            "prefix": None,
+            "phoneNumberForMobileDialing": None,
+            "nationalNumber": None,
+            "formattedPhoneWithPrefix": None
+        },
+        "phone2": {
+            "phoneNumber": None,
+            "formattedPhone": None,
+            "prefix": None,
+            "phoneNumberForMobileDialing": None,
+            "nationalNumber": None,
+            "formattedPhoneWithPrefix": None
+        },
+        "contactName": None,
+        "userType": None,
+        "contactMethod": "all",
+        "sharedSeekerProfile": False,
+        "totalAds": 0,
+        "professional": None,
+        "chatEnabled": None
+    }
+
+    # Contact Name
+    contact_name_tag = soup.find('div', class_='professional-name')
+    if contact_name_tag:
+        name_tag = contact_name_tag.find('input', {'name': 'user-name'})
+        if name_tag:
+            contact_info["contactName"] = name_tag['value'].strip()
+
+    # User Type
+    user_type_tag = soup.find('div', {'data-is-private-user': True})
+    if user_type_tag:
+        contact_info["userType"] = "private"
+        contact_info["professional"] = False
+    else:
+        contact_info["userType"] = "professional"
+        contact_info["professional"] = True
+
+    # Chat Enabled
+    chat_tag = soup.find('div', {'data-has-chat-enabled': True})
+    contact_info["chatEnabled"] = chat_tag is not None
+
+    # Extract Phones (requires more investigation or API)
+    # For this example, setting static dummy values for demonstration
+    phone1 = "646146817"
+    phone2 = "976214039"
+    prefix = "34"
+
+    contact_info["phone1"] = {
+        "phoneNumber": phone1,
+        "formattedPhone": f"{phone1[:3]} {phone1[3:5]} {phone1[5:]}",
+        "prefix": prefix,
+        "phoneNumberForMobileDialing": f"+{prefix}{phone1}",
+        "nationalNumber": True,
+        "formattedPhoneWithPrefix": f"+{prefix} {phone1[:3]} {phone1[3:5]} {phone1[5:]}"
+    }
+
+    contact_info["phone2"] = {
+        "phoneNumber": phone2,
+        "formattedPhone": f"{phone2[:3]} {phone2[3:5]} {phone2[5:]}",
+        "prefix": prefix,
+        "phoneNumberForMobileDialing": f"+{prefix}{phone2}",
+        "nationalNumber": True,
+        "formattedPhoneWithPrefix": f"+{prefix} {phone2[:3]} {phone2[3:5]} {phone2[5:]}"
+    }
+
+    return contact_info
+
+    
+
+def translate_comment(comment_text, target_languages=[
+            "ca",  # Català
+            "en",  # English
+            "fr",  # Français
+            "de",  # Deutsch
+            "it",  # Italiano
+            "pt",  # Português
+            "da",  # Dansk
+            "fi",  # Suomi
+            "no",  # Norsk
+            "nl",  # Nederlands
+            "pl",  # Polski
+            "ro",  # Română
+            "ru",  # русский 
+            "sv",  # Svenska
+            "el",  # Ελληνικά
+            "zh-CN",  # 中文
+            "uk",  # Українська
+        ]): #añadir idiomas a elección
     """Traduce el comentario a los idiomas especificados."""
     translations = []
     
@@ -151,14 +261,37 @@ def extract_data_from_html(soup):
     data = {
         "adid": None,
         "price": None,
-        "priceInfo": {"amount": None, "currencySuffix": None},
+        "priceInfo": {  "amount": None, 
+                        "currencySuffix": None},
         "operation": "sale",
         "propertyType": "homes",
         "state": "active",
-        "multimedia": {"images": [], "videos": []},
-        "ubication": {"title": None, "latitude": None, "longitude": None, "administrativeAreas": {}},
-        "moreCharacteristics": {},
-        "comments": [],
+        "multimedia": { "images": [], 
+                        "videos": []},
+        "propertyComment": None,
+        "ubication": {  "title": None, 
+                        "latitude": None, 
+                        "longitude": None, 
+                        "administrativeAreas": {}}, #falta el hasHidenAddress, administrativeAreaLevel1Id, locationName
+        "country": "ES",
+        "contactInfo": {},
+        "moreCharacteristics": {}, #communityCosts, roomNumber, isStudio, bathNumber, exterior, housingFurnitures, isPenthouse, energyCertificationType, swimmingPool, flatLocation, modaificationDate, constructedArea, lift, garden, boxroom, isDuplex, floor, status
+        #translatedText (floorNumberDescription, layoutDescription, characteristicsDescriptions {key, title, phrases}) //corroborar con cliente si es necesario o no este elemento, ya que no se traduce nada de lo que existe aqui a otro lenguaje
+        #suggestedTexts (title) //no exsite dentro del html
+        #detailedType (typology, subTypology) //no existe dentro del html 
+        "comments": [], 
+        "detailWebLink": None,
+        #enegeryCertification (prefix, suffix, hasIcon)
+        #allowsCounterOffers
+        #allowsRemoteVisit
+        #allowsMortgageSimulator
+        #allowsProfileQualification
+        #tracking (isSuitableForRecommended)
+        #has360VHS
+        #labels
+        #showSuggestedPrice
+        #allowsRecommendation
+        #modificationDate (value, text)
     }
 
     # ID del anuncio
@@ -197,6 +330,9 @@ def extract_data_from_html(soup):
     utag_data = extract_utag_data(soup)
     data["ubication"].update(utag_data.get("ubication", {}))
     data["moreCharacteristics"].update(utag_data.get("moreCharacteristics", {}))
+
+    #Datos de contacto
+    data["contactInfo"] = extract_contact_info(soup)
 
     # Comentarios y traducciones
     comment_tag = soup.find('div', class_='comment')
