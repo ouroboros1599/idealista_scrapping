@@ -134,9 +134,9 @@ def extract_multimedia(soup):
             "deeplinkUrl": img.get('data-url', '')
         })
     return multimedia
-
+    
 def extract_contact_info(soup):
-    """Extrae la información de contacto del HTML."""
+    """Extrae la información de contacto del HTML y obtiene los teléfonos a través de una solicitud AJAX."""
     contact_info = {
         "phone1": {
             "phoneNumber": None,
@@ -163,6 +163,14 @@ def extract_contact_info(soup):
         "chatEnabled": None
     }
 
+    # Obtener el data-adid del HTML
+    adid_tag = soup.find('a', class_='btn nav next icon-arrow-right-after --not-mobile', attrs={'data-adid': True})
+    if not adid_tag:
+        print("No se encontró el data-adid en el HTML.")
+        return contact_info
+
+    adid = adid_tag['data-adid']
+
     # Contact Name
     contact_name_tag = soup.find('div', class_='professional-name')
     if contact_name_tag:
@@ -183,33 +191,66 @@ def extract_contact_info(soup):
     chat_tag = soup.find('div', {'data-has-chat-enabled': True})
     contact_info["chatEnabled"] = chat_tag is not None
 
-    # Extract Phones (requires more investigation or API)
-    # For this example, setting static dummy values for demonstration
-    phone1 = "646146817"
-    phone2 = "976214039"
-    prefix = "34"
+    # Realizar la solicitud AJAX para obtener los teléfonos utilizando adid
+    try:
+        url = f"https://www.idealista.com/es/ajax/ads/{adid}/contact-phones"
+        response = requests.get(url)
+        response.raise_for_status()
+        phones_data = response.json()  # Suponiendo que la respuesta es JSON
 
-    contact_info["phone1"] = {
-        "phoneNumber": phone1,
-        "formattedPhone": f"{phone1[:3]} {phone1[3:5]} {phone1[5:]}",
-        "prefix": prefix,
-        "phoneNumberForMobileDialing": f"+{prefix}{phone1}",
-        "nationalNumber": True,
-        "formattedPhoneWithPrefix": f"+{prefix} {phone1[:3]} {phone1[3:5]} {phone1[5:]}"
-    }
+        # Extraer y formatear los teléfonos si existen
+        if phones_data.get("phone1"):
+            phone1 = phones_data["phone1"]
+            contact_info["phone1"] = {
+                "phoneNumber": phone1,
+                "formattedPhone": f"{phone1[:3]} {phone1[3:5]} {phone1[5:]}",
+                "prefix": "34",
+                "phoneNumberForMobileDialing": f"+34{phone1}",
+                "nationalNumber": True,
+                "formattedPhoneWithPrefix": f"+34 {phone1[:3]} {phone1[3:5]} {phone1[5:]}"
+            }
 
-    contact_info["phone2"] = {
-        "phoneNumber": phone2,
-        "formattedPhone": f"{phone2[:3]} {phone2[3:5]} {phone2[5:]}",
-        "prefix": prefix,
-        "phoneNumberForMobileDialing": f"+{prefix}{phone2}",
-        "nationalNumber": True,
-        "formattedPhoneWithPrefix": f"+{prefix} {phone2[:3]} {phone2[3:5]} {phone2[5:]}"
-    }
+        if phones_data.get("phone2"):
+            phone2 = phones_data["phone2"]
+            contact_info["phone2"] = {
+                "phoneNumber": phone2,
+                "formattedPhone": f"{phone2[:3]} {phone2[3:5]} {phone2[5:]}",
+                "prefix": "34",
+                "phoneNumberForMobileDialing": f"+34{phone2}",
+                "nationalNumber": True,
+                "formattedPhoneWithPrefix": f"+34 {phone2[:3]} {phone2[3:5]} {phone2[5:]}"
+            }
+    
+    except requests.exceptions.RequestException as e:
+        print(f"Error al realizar la solicitud AJAX: {e}")
+
+    # Teléfonos (extracción dinámica desde el HTML)
+    phone1_tag = soup.find('a', href=re.compile(r'tel:\+34'))
+    if phone1_tag:
+        phone1 = phone1_tag['href'].replace('tel:', '')
+        contact_info["phone1"] = {
+            "phoneNumber": phone1,
+            "formattedPhone": f"{phone1[:3]} {phone1[3:5]} {phone1[5:]}",
+            "prefix": "34",
+            "phoneNumberForMobileDialing": f"+34{phone1}",
+            "nationalNumber": True,
+            "formattedPhoneWithPrefix": f"+34 {phone1[:3]} {phone1[3:5]} {phone1[5:]}"
+        }
+
+    phone2_tag = soup.find('a', href=re.compile(r'tel:\+34'))
+    if phone2_tag and phone2_tag != phone1_tag:
+        phone2 = phone2_tag['href'].replace('tel:', '')
+        contact_info["phone2"] = {
+            "phoneNumber": phone2,
+            "formattedPhone": f"{phone2[:3]} {phone2[3:5]} {phone2[5:]}",
+            "prefix": "34",
+            "phoneNumberForMobileDialing": f"+34{phone2}",
+            "nationalNumber": True,
+            "formattedPhoneWithPrefix": f"+34 {phone2[:3]} {phone2[3:5]} {phone2[5:]}"
+        }
 
     return contact_info
 
-    
 
 def translate_comment(comment_text, target_languages=[
             "ca",  # Català
