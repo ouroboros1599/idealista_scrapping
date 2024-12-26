@@ -325,6 +325,12 @@ def extract_energy_certification(soup):
 
     return energy_cerifications
 
+def check_mortgage_simluator(soup):
+    simulator_section = soup.find("div", class_="item-form item-redils js-buying-price-slider buying-price")
+    if not simulator_section:
+        return False
+    return True
+
 def check_offer_text(soup):
     """Busca el texto Hacer una contraoferta en todo el HTML de la página"""
     try: 
@@ -401,7 +407,7 @@ def extract_data_from_html(soup):
         "energyCertification": [],
         "allowsCounterOffers": False,
         "allowsRemoteVisit": False, 
-        #allowsMortgageSimulator
+        "allowsMortgageSimulator": False,
         #allowsProfileQualification
         #tracking (isSuitableForRecommended)
         "has360VHS": False
@@ -472,6 +478,7 @@ def extract_data_from_html(soup):
     data["allowsRemoteVisit"] = extract_remote_visit_and_360(soup)["allowsRemoteVisit"]
     data["has360VHS"] = extract_remote_visit_and_360(soup)["has360VHS"]
 
+    data["allowsMortgageSimulator"] = check_mortgage_simluator(soup)
     return data
 
 def scrape_page(page_url):
