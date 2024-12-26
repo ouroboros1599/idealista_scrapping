@@ -135,121 +135,121 @@ def extract_multimedia(soup):
         })
     return multimedia
     
-def extract_contact_info(soup):
-    """Extrae la información de contacto del HTML y obtiene los teléfonos a través de una solicitud AJAX."""
-    contact_info = {
-        "phone1": {
-            "phoneNumber": None,
-            "formattedPhone": None,
-            "prefix": None,
-            "phoneNumberForMobileDialing": None,
-            "nationalNumber": None,
-            "formattedPhoneWithPrefix": None
-        },
-        "phone2": {
-            "phoneNumber": None,
-            "formattedPhone": None,
-            "prefix": None,
-            "phoneNumberForMobileDialing": None,
-            "nationalNumber": None,
-            "formattedPhoneWithPrefix": None
-        },
-        "contactName": None,
-        "userType": None,
-        "contactMethod": "all",
-        "sharedSeekerProfile": False,
-        "totalAds": 0,
-        "professional": None,
-        "chatEnabled": None
-    }
+# def extract_contact_info(soup):
+#     """Extrae la información de contacto del HTML y obtiene los teléfonos a través de una solicitud AJAX."""
+#     contact_info = {
+#         "phone1": {
+#             "phoneNumber": None,
+#             "formattedPhone": None,
+#             "prefix": None,
+#             "phoneNumberForMobileDialing": None,
+#             "nationalNumber": None,
+#             "formattedPhoneWithPrefix": None
+#         },
+#         "phone2": {
+#             "phoneNumber": None,
+#             "formattedPhone": None,
+#             "prefix": None,
+#             "phoneNumberForMobileDialing": None,
+#             "nationalNumber": None,
+#             "formattedPhoneWithPrefix": None
+#         },
+#         "contactName": None,
+#         "userType": None,
+#         "contactMethod": "all",
+#         "sharedSeekerProfile": False,
+#         "totalAds": 0,
+#         "professional": None,
+#         "chatEnabled": None
+#     }
 
-    # Obtener el data-adid del HTML
-    adid_tag = soup.find('a', class_='btn nav next icon-arrow-right-after --not-mobile', attrs={'data-adid': True})
-    if not adid_tag:
-        print("No se encontró el data-adid en el HTML.")
-        return contact_info
+#     # Obtener el data-adid del HTML
+#     adid_tag = soup.find('a', class_='btn nav next icon-arrow-right-after --not-mobile', attrs={'data-adid': True})
+#     if not adid_tag:
+#         print("No se encontró el data-adid en el HTML.")
+#         return contact_info
 
-    adid = adid_tag['data-adid']
+#     adid = adid_tag['data-adid']
 
-    # Contact Name
-    contact_name_tag = soup.find('div', class_='professional-name')
-    if contact_name_tag:
-        name_tag = contact_name_tag.find('input', {'name': 'user-name'})
-        if name_tag:
-            contact_info["contactName"] = name_tag['value'].strip()
+#     # Contact Name
+#     contact_name_tag = soup.find('div', class_='professional-name')
+#     if contact_name_tag:
+#         name_tag = contact_name_tag.find('input', {'name': 'user-name'})
+#         if name_tag:
+#             contact_info["contactName"] = name_tag['value'].strip()
 
-    # User Type
-    user_type_tag = soup.find('div', {'data-is-private-user': True})
-    if user_type_tag:
-        contact_info["userType"] = "private"
-        contact_info["professional"] = False
-    else:
-        contact_info["userType"] = "professional"
-        contact_info["professional"] = True
+#     # User Type
+#     user_type_tag = soup.find('div', {'data-is-private-user': True})
+#     if user_type_tag:
+#         contact_info["userType"] = "private"
+#         contact_info["professional"] = False
+#     else:
+#         contact_info["userType"] = "professional"
+#         contact_info["professional"] = True
 
-    # Chat Enabled
-    chat_tag = soup.find('div', {'data-has-chat-enabled': True})
-    contact_info["chatEnabled"] = chat_tag is not None
+#     # Chat Enabled
+#     chat_tag = soup.find('div', {'data-has-chat-enabled': True})
+#     contact_info["chatEnabled"] = chat_tag is not None
 
-    # Realizar la solicitud AJAX para obtener los teléfonos utilizando adid
-    try:
-        url = f"https://www.idealista.com/es/ajax/ads/{adid}/contact-phones"
-        response = requests.get(url)
-        response.raise_for_status()
-        phones_data = response.json()  # Suponiendo que la respuesta es JSON
+#     # Realizar la solicitud AJAX para obtener los teléfonos utilizando adid
+#     try:
+#         url = f"https://www.idealista.com/es/ajax/ads/{adid}/contact-phones"
+#         response = requests.get(url)
+#         response.raise_for_status()
+#         phones_data = response.json()  # Suponiendo que la respuesta es JSON
 
-        # Extraer y formatear los teléfonos si existen
-        if phones_data.get("phone1"):
-            phone1 = phones_data["phone1"]
-            contact_info["phone1"] = {
-                "phoneNumber": phone1,
-                "formattedPhone": f"{phone1[:3]} {phone1[3:5]} {phone1[5:]}",
-                "prefix": "34",
-                "phoneNumberForMobileDialing": f"+34{phone1}",
-                "nationalNumber": True,
-                "formattedPhoneWithPrefix": f"+34 {phone1[:3]} {phone1[3:5]} {phone1[5:]}"
-            }
+#         # Extraer y formatear los teléfonos si existen
+#         if phones_data.get("phone1"):
+#             phone1 = phones_data["phone1"]
+#             contact_info["phone1"] = {
+#                 "phoneNumber": phone1,
+#                 "formattedPhone": f"{phone1[:3]} {phone1[3:5]} {phone1[5:]}",
+#                 "prefix": "34",
+#                 "phoneNumberForMobileDialing": f"+34{phone1}",
+#                 "nationalNumber": True,
+#                 "formattedPhoneWithPrefix": f"+34 {phone1[:3]} {phone1[3:5]} {phone1[5:]}"
+#             }
 
-        if phones_data.get("phone2"):
-            phone2 = phones_data["phone2"]
-            contact_info["phone2"] = {
-                "phoneNumber": phone2,
-                "formattedPhone": f"{phone2[:3]} {phone2[3:5]} {phone2[5:]}",
-                "prefix": "34",
-                "phoneNumberForMobileDialing": f"+34{phone2}",
-                "nationalNumber": True,
-                "formattedPhoneWithPrefix": f"+34 {phone2[:3]} {phone2[3:5]} {phone2[5:]}"
-            }
+#         if phones_data.get("phone2"):
+#             phone2 = phones_data["phone2"]
+#             contact_info["phone2"] = {
+#                 "phoneNumber": phone2,
+#                 "formattedPhone": f"{phone2[:3]} {phone2[3:5]} {phone2[5:]}",
+#                 "prefix": "34",
+#                 "phoneNumberForMobileDialing": f"+34{phone2}",
+#                 "nationalNumber": True,
+#                 "formattedPhoneWithPrefix": f"+34 {phone2[:3]} {phone2[3:5]} {phone2[5:]}"
+#             }
     
-    except requests.exceptions.RequestException as e:
-        print(f"Error al realizar la solicitud AJAX: {e}")
+#     except requests.exceptions.RequestException as e:
+#         print(f"Error al realizar la solicitud AJAX: {e}")
 
-    # Teléfonos (extracción dinámica desde el HTML)
-    phone1_tag = soup.find('a', href=re.compile(r'tel:\+34'))
-    if phone1_tag:
-        phone1 = phone1_tag['href'].replace('tel:', '')
-        contact_info["phone1"] = {
-            "phoneNumber": phone1,
-            "formattedPhone": f"{phone1[:3]} {phone1[3:5]} {phone1[5:]}",
-            "prefix": "34",
-            "phoneNumberForMobileDialing": f"+34{phone1}",
-            "nationalNumber": True,
-            "formattedPhoneWithPrefix": f"+34 {phone1[:3]} {phone1[3:5]} {phone1[5:]}"
-        }
+#     # Teléfonos (extracción dinámica desde el HTML)
+#     phone1_tag = soup.find('a', href=re.compile(r'tel:\+34'))
+#     if phone1_tag:
+#         phone1 = phone1_tag['href'].replace('tel:', '')
+#         contact_info["phone1"] = {
+#             "phoneNumber": phone1,
+#             "formattedPhone": f"{phone1[:3]} {phone1[3:5]} {phone1[5:]}",
+#             "prefix": "34",
+#             "phoneNumberForMobileDialing": f"+34{phone1}",
+#             "nationalNumber": True,
+#             "formattedPhoneWithPrefix": f"+34 {phone1[:3]} {phone1[3:5]} {phone1[5:]}"
+#         }
 
-    phone2_tag = soup.find('a', href=re.compile(r'tel:\+34'))
-    if phone2_tag and phone2_tag != phone1_tag:
-        phone2 = phone2_tag['href'].replace('tel:', '')
-        contact_info["phone2"] = {
-            "phoneNumber": phone2,
-            "formattedPhone": f"{phone2[:3]} {phone2[3:5]} {phone2[5:]}",
-            "prefix": "34",
-            "phoneNumberForMobileDialing": f"+34{phone2}",
-            "nationalNumber": True,
-            "formattedPhoneWithPrefix": f"+34 {phone2[:3]} {phone2[3:5]} {phone2[5:]}"
-        }
+#     phone2_tag = soup.find('a', href=re.compile(r'tel:\+34'))
+#     if phone2_tag and phone2_tag != phone1_tag:
+#         phone2 = phone2_tag['href'].replace('tel:', '')
+#         contact_info["phone2"] = {
+#             "phoneNumber": phone2,
+#             "formattedPhone": f"{phone2[:3]} {phone2[3:5]} {phone2[5:]}",
+#             "prefix": "34",
+#             "phoneNumberForMobileDialing": f"+34{phone2}",
+#             "nationalNumber": True,
+#             "formattedPhoneWithPrefix": f"+34 {phone2[:3]} {phone2[3:5]} {phone2[5:]}"
+#         }
 
-    return contact_info
+#     return contact_info
 
 
 def translate_comment(comment_text, target_languages=[
@@ -297,6 +297,45 @@ def translate_comment(comment_text, target_languages=[
     
     return translations
 
+def extract_energy_certification(soup):
+    """Extrae los detalles del certificado energetico"""
+    energy_cerifications = []
+
+    energy_features = soup.find('div', class_ = 'details-property-feature-two')
+    if not energy_features:
+        return []
+    
+    #iterar sobre las caracteristicas energéticas
+    for item in energy_features.find_all('li'):
+        prefix = item.find('span').get_text(strip = True) if item.find('span') else None
+        icon_span = item.find('span', class_ = re.compile(r'icon-energy-c-[a-g]'))
+
+        if icon_span: 
+            suffix = icon_span['class'][0].split('-')[-1].upper()
+            has_icon = True
+        else:
+            suffix = None
+            has_icon = False
+
+        energy_cerifications.append({
+            "prefix": prefix,
+            "suffix": suffix,
+            "hasIcon": has_icon
+        })
+
+    return energy_cerifications
+
+def check_offer_text(soup):
+    """Busca el texto Hacer una contraoferta en todo el HTML de la página"""
+    try: 
+        page_text = soup.get_text()
+        if "Hacer una contraoferta" in page_text:
+            return True
+        return False
+    except Exception as e: 
+        print(f"❌ Error al buscar el texto de la contraoferta: {e}")
+        return False
+
 def extract_data_from_html(soup):
     """Extrae los datos necesarios del HTML y los organiza según idealista.json."""
     data = {
@@ -315,15 +354,15 @@ def extract_data_from_html(soup):
                         "longitude": None, 
                         "administrativeAreas": {}}, #falta el hasHidenAddress, administrativeAreaLevel1Id, locationName
         "country": "ES",
-        "contactInfo": {},
+        # "contactInfo": {},   //testear
         "moreCharacteristics": {}, #communityCosts, roomNumber, isStudio, bathNumber, exterior, housingFurnitures, isPenthouse, energyCertificationType, swimmingPool, flatLocation, modaificationDate, constructedArea, lift, garden, boxroom, isDuplex, floor, status //corroborar con cliente si es necesario o no este elemento, ya que no se traduce nada de lo que existe aqui a otro lenguaje
         #translatedText (floorNumberDescription, layoutDescription, characteristicsDescriptions {key, title, phrases}) //corroborar con cliente si es necesario o no este elemento, ya que no se traduce nada de lo que existe aqui a
         #suggestedTexts (title) //no exsite dentro del html
         #detailedType (typology, subTypology) //no existe dentro del html
         "comments": [], 
         "detailWebLink": None,
-        #enegeryCertification (prefix, suffix, hasIcon)
-        #allowsCounterOffers
+        "energyCertification": [],
+        "allowsCounterOffers": False,
         #allowsRemoteVisit
         #allowsMortgageSimulator
         #allowsProfileQualification
@@ -372,8 +411,8 @@ def extract_data_from_html(soup):
     data["ubication"].update(utag_data.get("ubication", {}))
     data["moreCharacteristics"].update(utag_data.get("moreCharacteristics", {}))
 
-    #Datos de contacto
-    data["contactInfo"] = extract_contact_info(soup)
+    # Datos de contacto
+    #data["contactInfo"] = extract_contact_info(soup) descomentar
 
     # Comentarios y traducciones
     comment_tag = soup.find('div', class_='comment')
@@ -383,8 +422,14 @@ def extract_data_from_html(soup):
             comment_text = comment.get_text(strip=True)
             data["comments"] = translate_comment(comment_text)
 
-    # Enlace a la web
+    # Enlace de la web scrapeada
     data["detailWebLink"] = soup.find('link', rel='canonical')['href']
+
+    # Datos de certificación energética
+    data["energyCertification"] = extract_energy_certification(soup)
+
+    # Datos de si la oferta existe
+    data["allowsCounterOffers"] = check_offer_text(soup)
     return data
 
 def scrape_page(page_url):
@@ -410,7 +455,7 @@ def main():
         paginated_url = f"{base_url}?pagina={page}"
         try:
             scrape_page(paginated_url)
-            time.sleep(random.uniform(2, 5))
+            time.sleep(random.uniform(0, 1))
         except Exception as e:
             print(f"❌ Error en la página {page}: {e}")
             break
