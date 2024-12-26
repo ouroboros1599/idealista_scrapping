@@ -336,6 +336,43 @@ def check_offer_text(soup):
         print(f"❌ Error al buscar el texto de la contraoferta: {e}")
         return False
 
+def extract_remote_visit_and_360(soup):
+    """
+    Extrae los valores correspondientes a 'allowsRemoteVisit' y 'has360VHS' 
+    a partir del bloque de datos de 'visit3DTour' en el HTML.
+    """
+    try:
+        script_tag = soup.find('script', string=re.compile(r'visit3DTour'))
+        if not script_tag:
+            print("❌ No se encontró el bloque 'visit3DTour'.")
+            return {"allowsRemoteVisit": False, "has360VHS": False}
+
+        # Buscar la estructura JSON dentro del script
+        script_content = script_tag.string
+        json_data_match = re.search(r'visit3DTour:\s*(\[\{.*?\}\])', script_content, re.DOTALL)
+        if not json_data_match:
+            print("❌ No se pudo extraer los datos de 'visit3DTour'.")
+            return {"allowsRemoteVisit": False, "has360VHS": False}
+
+        # Parsear el JSON encontrado
+        visit3D_data = json.loads(json_data_match.group(1))
+        
+        # Obtener los valores de '3d' y '360' del primer elemento de la lista
+        if visit3D_data and isinstance(visit3D_data, list):
+            first_entry = visit3D_data[0]
+            allows_remote_visit = first_entry.get("3d", False)
+            has_360_vhs = first_entry.get("360", False)
+
+            return {
+                "allowsRemoteVisit": allows_remote_visit,
+                "has360VHS": has_360_vhs
+            }
+
+        return {"allowsRemoteVisit": False, "has360VHS": False}
+    except Exception as e:
+        print(f"❌ Error al extraer datos de 'visit3DTour': {e}")
+        return {"allowsRemoteVisit": False, "has360VHS": False}
+
 def extract_data_from_html(soup):
     """Extrae los datos necesarios del HTML y los organiza según idealista.json."""
     data = {
@@ -363,11 +400,11 @@ def extract_data_from_html(soup):
         "detailWebLink": None,
         "energyCertification": [],
         "allowsCounterOffers": False,
-        #allowsRemoteVisit
+        "allowsRemoteVisit": False, 
         #allowsMortgageSimulator
         #allowsProfileQualification
         #tracking (isSuitableForRecommended)
-        #has360VHS
+        "has360VHS": False
         #labels
         #showSuggestedPrice
         #allowsRecommendation
@@ -430,6 +467,11 @@ def extract_data_from_html(soup):
 
     # Datos de si la oferta existe
     data["allowsCounterOffers"] = check_offer_text(soup)
+
+    # Datos de visitas remotas y 360
+    data["allowsRemoteVisit"] = extract_remote_visit_and_360(soup)["allowsRemoteVisit"]
+    data["has360VHS"] = extract_remote_visit_and_360(soup)["has360VHS"]
+
     return data
 
 def scrape_page(page_url):
