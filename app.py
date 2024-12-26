@@ -325,12 +325,6 @@ def extract_energy_certification(soup):
 
     return energy_cerifications
 
-def check_mortgage_simluator(soup):
-    simulator_section = soup.find("div", class_="item-form item-redils js-buying-price-slider buying-price")
-    if not simulator_section:
-        return False
-    return True
-
 def check_offer_text(soup):
     """Busca el texto Hacer una contraoferta en todo el HTML de la página"""
     try: 
@@ -378,6 +372,13 @@ def extract_remote_visit_and_360(soup):
     except Exception as e:
         print(f"❌ Error al extraer datos de 'visit3DTour': {e}")
         return {"allowsRemoteVisit": False, "has360VHS": False}
+
+def check_mortgage_simluator(soup):
+    """Busca el simulador de hipotecas en el HTML de la página."""
+    simulator_section = soup.find("div", class_="item-form item-redils js-buying-price-slider buying-price")
+    if not simulator_section:
+        return False
+    return True
 
 def extract_data_from_html(soup):
     """Extrae los datos necesarios del HTML y los organiza según idealista.json."""
