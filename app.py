@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import json
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 import urllib.parse as urlparse
 from deep_translator import GoogleTranslator
@@ -409,6 +409,48 @@ def extract_allow_recommendation(soup):
         print(f"❌ Error al extraer datos de 'hasToShowRecommendations': {e}")
         return False
 
+def extract_modification_date(soup):
+    """Extrae la información de la última actualización desde el texto del HTML"""
+
+    try: 
+        texto_actualizacion = soup.find(string = re.compile(r"Anuncio actualizado hace (\d+) (día|días|hora|horas|minuto|minutos)"))
+        if not texto_actualizacion:
+            print("❌ No se encontró el texto de la última actualización.")
+            return None
+        
+        #extrae el valor númerico y la unidad de tiempo 
+        match = re.search(r"Anuncio actualizado hace (\d+) (día|días|hora|horas|minuto|minutos)", texto_actualizacion)
+        if not match:
+            print("❌ No se pudo extraer la información de la última actualización.")
+            return None
+        
+        cantidad = int(match.group(1))
+        unidad = match.group(2)
+
+        #calcular la fecha de modificación
+        ahora = datetime.now()
+        if "día" in unidad:
+            fecha_actualizacion = ahora - timedelta(days = cantidad)
+        elif "hora" in unidad:
+            fecha_actualizacion = ahora - timedelta(hours = cantidad)
+        elif "minuto" in unidad:
+            fecha_actualizacion = ahora - timedelta(minutes = cantidad)
+        else:
+            print("❌ Unidad de tiempo no reconocida.")
+            return None
+        
+        #convierte la fecha a milisegundos desde la época Unix
+        value =  int(fecha_actualizacion.timestamp() * 1000)
+
+        modification_date = {
+            "value": value,
+            "text": texto_actualizacion.strip()
+        }
+        return modification_date
+    except Exception as e:
+        print(f"❌ Error al extraer la fecha de modificación: {e}")
+        return None
+
 def extract_data_from_html(soup):
     """Extrae los datos necesarios del HTML y los organiza según idealista.json."""
     data = {
@@ -428,7 +470,7 @@ def extract_data_from_html(soup):
                         "administrativeAreas": {}}, #falta el hasHidenAddress, administrativeAreaLevel1Id, locationName
         "country": "ES",
         # "contactInfo": {},   //testear
-        "moreCharacteristics": {}, #communityCosts, roomNumber, isStudio, bathNumber, exterior, housingFurnitures, isPenthouse, energyCertificationType, swimmingPool, flatLocation, modaificationDate, constructedArea, lift, garden, boxroom, isDuplex, floor, status //corroborar con cliente si es necesario o no este elemento, ya que no se traduce nada de lo que existe aqui a otro lenguaje
+        "moreCharacteristics": {}, 
         #translatedText (floorNumberDescription, layoutDescription, characteristicsDescriptions {key, title, phrases}) //corroborar con cliente si es necesario o no este elemento, ya que no se traduce nada de lo que existe aqui a
         #suggestedTexts (title) //no exsite dentro del html
         #detailedType (typology, subTypology) //no existe dentro del html
@@ -445,7 +487,7 @@ def extract_data_from_html(soup):
         #labels //no existe en el HTML 
         #showSuggestedPrice //no existe dentro del html
         "allowsRecommendation": False, 
-        #modificationDate (value, text)
+        "modificationDate": [],
     }
 
     # ID del anuncio
@@ -515,6 +557,7 @@ def extract_data_from_html(soup):
 
     data["allowsRecommendation"] = extract_allow_recommendation(soup)
 
+    data["modificationDate"] = extract_modification_date(soup)
     return data
 
 def scrape_page(page_url):
