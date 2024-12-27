@@ -112,8 +112,8 @@ def extract_utag_data(soup):
                     "good" if condition.get('isGoodCondition') == "1" else
                     "bad" if condition.get('isNeedsRenovating') == "1" else None
                 ),
-                "isSuitableForRecommended": bool(int(ad_data.get('isSuitableForRecommended', 0)))
-            }
+            },
+            "isSuitableForRecommended": bool(int(ad_data.get('isSuitableForRecommended', 0)))
         }
     except Exception as e:
         print(f"❌ Error al extraer utag_data: {e}")
@@ -409,10 +409,11 @@ def extract_data_from_html(soup):
         "allowsCounterOffers": False,
         "allowsRemoteVisit": False, 
         "allowsMortgageSimulator": False,
-        #allowsProfileQualification
-        #tracking (isSuitableForRecommended)
+        "allowsProfileQualification": False,
+        "tracking": { "isSuitableForRecommended": False,
+        },
         "has360VHS": False
-        #labels
+        #labels //no existe en el HTML 
         #showSuggestedPrice
         #allowsRecommendation
         #modificationDate (value, text)
@@ -480,6 +481,9 @@ def extract_data_from_html(soup):
     data["has360VHS"] = extract_remote_visit_and_360(soup)["has360VHS"]
 
     data["allowsMortgageSimulator"] = check_mortgage_simluator(soup)
+
+    data["tracking"].update(utag_data.get("tracking",{ "isSuitableForRecommended": False}))
+
     return data
 
 def scrape_page(page_url):
