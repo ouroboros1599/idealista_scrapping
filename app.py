@@ -48,7 +48,7 @@ def extract_lat_lon(map_url):
             return lat, lon
         return None, None
     except Exception as e:
-        print(f"❌ Error al extraer lat/lon: {e}")
+        print(f"Error al extraer lat/lon: {e}")
         return None, None
 
 def extract_administrative_areas(soup):
@@ -65,7 +65,7 @@ def extract_administrative_areas(soup):
             "administrativeAreaLevel1": areas[3] if len(areas) > 3 else None,
         }
     except Exception as e:
-        print(f"❌ Error al extraer áreas administrativas: {e}")
+        print(f"Error al extraer áreas administrativas: {e}")
         return {}
 
 def extract_utag_data(soup):
@@ -116,7 +116,7 @@ def extract_utag_data(soup):
             "isSuitableForRecommended": bool(int(ad_data.get('isSuitableForRecommended', 0)))
         }
     except Exception as e:
-        print(f"❌ Error al extraer utag_data: {e}")
+        print(f"Error al extraer utag_data: {e}")
         return {"ubication": {}, "moreCharacteristics": {}}
 
 def extract_multimedia(soup):
@@ -293,7 +293,7 @@ def translate_comment(comment_text, target_languages=[
                 "defaultLanguage": False
             })
         except Exception as e:
-            print(f"❌ Error al traducir a {lang}: {e}")
+            print(f"Error al traducir a {lang}: {e}")
     
     return translations
 
@@ -333,7 +333,7 @@ def check_offer_text(soup):
             return True
         return False
     except Exception as e: 
-        print(f"❌ Error al buscar el texto de la contraoferta: {e}")
+        print(f"Error al buscar el texto de la contraoferta: {e}")
         return False
 
 def extract_remote_visit_and_360(soup):
@@ -344,14 +344,14 @@ def extract_remote_visit_and_360(soup):
     try:
         script_tag = soup.find('script', string=re.compile(r'visit3DTour'))
         if not script_tag:
-            print("❌ No se encontró el bloque 'visit3DTour'.")
+            print("No se encontró el bloque 'visit3DTour'.")
             return {"allowsRemoteVisit": False, "has360VHS": False}
 
         # Buscar la estructura JSON dentro del script
         script_content = script_tag.string
         json_data_match = re.search(r'visit3DTour:\s*(\[\{.*?\}\])', script_content, re.DOTALL)
         if not json_data_match:
-            print("❌ No se pudo extraer los datos de 'visit3DTour'.")
+            print("No se pudo extraer los datos de 'visit3DTour'.")
             return {"allowsRemoteVisit": False, "has360VHS": False}
 
         # Parsear el JSON encontrado
@@ -370,7 +370,7 @@ def extract_remote_visit_and_360(soup):
 
         return {"allowsRemoteVisit": False, "has360VHS": False}
     except Exception as e:
-        print(f"❌ Error al extraer datos de 'visit3DTour': {e}")
+        print(f"Error al extraer datos de 'visit3DTour': {e}")
         return {"allowsRemoteVisit": False, "has360VHS": False}
 
 def check_mortgage_simluator(soup):
@@ -389,7 +389,7 @@ def extract_allow_recommendation(soup):
         # Busca el <script> que contiene 'hasToShowRecommendations'
         script_tag = soup.find("script", string=re.compile(r'hasToShowRecommendations'))
         if not script_tag:
-            print("❌ No se encontró el script que contiene 'hasToShowRecommendations'.")
+            print("No se encontró el script que contiene 'hasToShowRecommendations'.")
             return False
 
         # Extrae el contenido del script
@@ -398,7 +398,7 @@ def extract_allow_recommendation(soup):
         # Busca la estructura JSON que contiene 'hasToShowRecommendations'
         json_data_match = re.search(r'hasToShowRecommendations:\s*(true|false)', script_content, re.IGNORECASE)
         if not json_data_match:
-            print("❌ No se encontró 'hasToShowRecommendations' en el script.")
+            print("No se encontró 'hasToShowRecommendations' en el script.")
             return False
         
         # Extrae el valor booleano de 'hasToShowRecommendations'
@@ -406,7 +406,7 @@ def extract_allow_recommendation(soup):
 
         return has_to_show_recommendations
     except Exception as e:
-        print(f"❌ Error al extraer datos de 'hasToShowRecommendations': {e}")
+        print(f"Error al extraer datos de 'hasToShowRecommendations': {e}")
         return False
 
 def extract_modification_date(soup):
@@ -415,13 +415,13 @@ def extract_modification_date(soup):
     try: 
         texto_actualizacion = soup.find(string = re.compile(r"Anuncio actualizado hace (\d+) (día|días|hora|horas|minuto|minutos)"))
         if not texto_actualizacion:
-            print("❌ No se encontró el texto de la última actualización.")
+            print("No se encontró el texto de la última actualización.")
             return None
         
         #extrae el valor númerico y la unidad de tiempo 
         match = re.search(r"Anuncio actualizado hace (\d+) (día|días|hora|horas|minuto|minutos)", texto_actualizacion)
         if not match:
-            print("❌ No se pudo extraer la información de la última actualización.")
+            print("No se pudo extraer la información de la última actualización.")
             return None
         
         cantidad = int(match.group(1))
@@ -436,7 +436,7 @@ def extract_modification_date(soup):
         elif "minuto" in unidad:
             fecha_actualizacion = ahora - timedelta(minutes = cantidad)
         else:
-            print("❌ Unidad de tiempo no reconocida.")
+            print("Unidad de tiempo no reconocida.")
             return None
         
         #convierte la fecha a milisegundos desde la época Unix
@@ -448,7 +448,7 @@ def extract_modification_date(soup):
         }
         return modification_date
     except Exception as e:
-        print(f"❌ Error al extraer la fecha de modificación: {e}")
+        print(f"Error al extraer la fecha de modificación: {e}")
         return None
 
 def extract_data_from_html(soup):
@@ -569,7 +569,7 @@ def scrape_page(page_url):
     property_links = soup.find_all('a', class_='item-link')
     for link in property_links:
         property_url = f"https://www.idealista.com{link['href']}"
-        print(f"🛠️ Extrayendo datos de: {property_url}")
+        print(f"Extrayendo datos de: {property_url}")
         response = session.get(property_url, headers=headers)
         property_soup = BeautifulSoup(response.text, 'html.parser')
         properties.append(extract_data_from_html(property_soup))
@@ -579,13 +579,13 @@ def main():
     accept_cookies()
     page = 1
     while True:
-        print(f"\n🔎 Procesando página {page}...")
+        print(f"\nProcesando página {page}...")
         paginated_url = f"{base_url}?pagina={page}"
         try:
             scrape_page(paginated_url)
             time.sleep(random.uniform(0, 1))
         except Exception as e:
-            print(f"❌ Error en la página {page}: {e}")
+            print(f"Error en la página {page}: {e}")
             break
 
         headers = get_random_headers()
@@ -593,7 +593,7 @@ def main():
         soup = BeautifulSoup(response.text, 'html.parser')
         next_button = soup.find('a', class_='icon-arrow-right-after')
         if not next_button:
-            print("✅ No hay más páginas disponibles.")
+            print("No hay más páginas disponibles.")
             break
 
         page += 1
@@ -602,7 +602,7 @@ def main():
     output_file = "idealista_output.json"
     with open(output_file, "w", encoding="utf-8") as file:
         json.dump(properties, file, ensure_ascii=False, indent=4)
-    print(f"\n✅ Datos guardados en {output_file}")
+    print(f"\nDatos guardados en {output_file}")
 
 if __name__ == "__main__":
     main()
