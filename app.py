@@ -380,6 +380,35 @@ def check_mortgage_simluator(soup):
         return False
     return True
 
+def extract_allow_recommendation(soup):
+    """
+    Extrae el valor de hasToShowRecommendations desde un script HTML 
+    y lo asigna a allowsRecommendation.
+    """
+    try:
+        # Busca el <script> que contiene 'hasToShowRecommendations'
+        script_tag = soup.find("script", string=re.compile(r'hasToShowRecommendations'))
+        if not script_tag:
+            print("❌ No se encontró el script que contiene 'hasToShowRecommendations'.")
+            return False
+
+        # Extrae el contenido del script
+        script_content = script_tag.string
+        
+        # Busca la estructura JSON que contiene 'hasToShowRecommendations'
+        json_data_match = re.search(r'hasToShowRecommendations:\s*(true|false)', script_content, re.IGNORECASE)
+        if not json_data_match:
+            print("❌ No se encontró 'hasToShowRecommendations' en el script.")
+            return False
+        
+        # Extrae el valor booleano de 'hasToShowRecommendations'
+        has_to_show_recommendations = json_data_match.group(1).lower() == 'true'
+
+        return has_to_show_recommendations
+    except Exception as e:
+        print(f"❌ Error al extraer datos de 'hasToShowRecommendations': {e}")
+        return False
+
 def extract_data_from_html(soup):
     """Extrae los datos necesarios del HTML y los organiza según idealista.json."""
     data = {
@@ -412,10 +441,10 @@ def extract_data_from_html(soup):
         "allowsProfileQualification": False,
         "tracking": { "isSuitableForRecommended": False,
         },
-        "has360VHS": False
+        "has360VHS": False,
         #labels //no existe en el HTML 
-        #showSuggestedPrice
-        #allowsRecommendation
+        #showSuggestedPrice //no existe dentro del html
+        "allowsRecommendation": False, 
         #modificationDate (value, text)
     }
 
@@ -483,6 +512,8 @@ def extract_data_from_html(soup):
     data["allowsMortgageSimulator"] = check_mortgage_simluator(soup)
 
     data["tracking"].update(utag_data.get("tracking",{ "isSuitableForRecommended": False}))
+
+    data["allowsRecommendation"] = extract_allow_recommendation(soup)
 
     return data
 
